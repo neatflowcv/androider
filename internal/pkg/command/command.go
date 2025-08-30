@@ -102,46 +102,13 @@ func parseStatus(state string) domain.InstanceStatus {
 	}
 }
 
-// isValidIPv4는 주어진 문자열이 유효한 IPv4 주소인지 확인합니다.
-func (c *Command) isValidIPv4(ip string) bool {
-	// IPv6 주소 제외 (:: 포함)
-	if strings.Contains(ip, "::") {
-		return false
-	}
-
-	// IPv4 주소 패턴 확인 (x.x.x.x 형태)
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
-		return false
-	}
-
-	// 각 부분이 숫자인지 확인
-	for _, part := range parts {
-		if part == "" {
-			return false
-		}
-		// 숫자가 아닌 문자가 포함되어 있으면 false
-		for _, char := range part {
-			if char < '0' || char > '9' {
-				return false
-			}
-		}
-		// 0-255 범위 확인
-		if len(part) > 3 {
-			return false
-		}
-	}
-
-	return true
-}
-
 // getVMIP는 qemu-agent-command를 사용하여 가상 머신의 IP 주소를 가져옵니다.
 func (c *Command) getVMIP(ctx context.Context, vmName string) []netip.Addr {
 	// android 접두사 추가
 	fullVMName := "android" + vmName
 
 	// qemu-agent-command를 사용하여 네트워크 인터페이스 정보 가져오기
-	cmd := exec.CommandContext(ctx,
+	cmd := exec.CommandContext(ctx, //nolint:gosec
 		"virsh", "qemu-agent-command", fullVMName, `{"execute":"guest-network-get-interfaces"}`)
 
 	output, err := cmd.Output()
@@ -160,8 +127,8 @@ func (c *Command) getVMIP(ctx context.Context, vmName string) []netip.Addr {
 func (c *Command) extractIP(output []byte) []netip.Addr {
 	// 간단한 문자열 파싱으로 IP 주소 추출
 	// JSON 파싱 라이브러리를 사용하지 않고 문자열 검색으로 처리
-
 	var response QemuAgentCommandResponse
+
 	err := json.Unmarshal(output, &response)
 	if err != nil {
 		return nil
@@ -175,6 +142,7 @@ func (c *Command) extractIP(output []byte) []netip.Addr {
 			if err != nil {
 				continue
 			}
+
 			foundIPs = append(foundIPs, addr)
 		}
 	}

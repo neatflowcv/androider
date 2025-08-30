@@ -19,10 +19,12 @@ func TestList(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, instances)
+
 	for _, instance := range instances {
 		if instance.Status != domain.InstanceStatusRunning {
 			continue
 		}
+
 		require.NotEmpty(t, instance.IPs)
 	}
 }
