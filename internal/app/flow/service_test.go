@@ -4,13 +4,17 @@ import (
 	"testing"
 
 	"github.com/neatflowcv/androider/internal/app/flow"
+	"github.com/neatflowcv/androider/internal/pkg/command"
 	"github.com/stretchr/testify/require"
 )
 
 func TestList(t *testing.T) {
-	service := flow.NewService()
+	t.Parallel()
 
-	instances, err := service.List()
+	command := command.NewCommand()
+	service := flow.NewService(command)
+
+	instances, err := service.List(t.Context())
 
 	require.NoError(t, err)
 	require.NotEmpty(t, instances)
