@@ -2,7 +2,9 @@ package command
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/netip"
 	"os/exec"
 	"strings"
 
@@ -57,7 +59,7 @@ func (c *Command) List(ctx context.Context) ([]*domain.Instance, error) {
 				instance := &domain.Instance{
 					Name:   cleanName,
 					Status: status,
-					IP:     ip,
+					IPs:    ip,
 				}
 				instances = append(instances, instance)
 			}
@@ -72,12 +74,12 @@ func (c *Command) List(ctx context.Context) ([]*domain.Instance, error) {
 				// android 문자열 제거
 				cleanName := strings.TrimPrefix(name, "android")
 				// IP 주소 가져오기
-				ip := c.getVMIP(ctx, cleanName)
+				// ip := c.getVMIP(ctx, cleanName)
 				// Instance 생성 및 추가
 				instance := &domain.Instance{
 					Name:   cleanName,
 					Status: status,
-					IP:     ip,
+					IPs:    nil, // 꺼져있는 VM은 IP 주소가 없음
 				}
 				instances = append(instances, instance)
 			}
@@ -134,7 +136,7 @@ func (c *Command) isValidIPv4(ip string) bool {
 }
 
 // getVMIP는 qemu-agent-command를 사용하여 가상 머신의 IP 주소를 가져옵니다.
-func (c *Command) getVMIP(ctx context.Context, vmName string) string {
+func (c *Command) getVMIP(ctx context.Context, vmName string) []netip.Addr {
 	// android 접두사 추가
 	fullVMName := "android" + vmName
 
@@ -145,71 +147,59 @@ func (c *Command) getVMIP(ctx context.Context, vmName string) string {
 	output, err := cmd.Output()
 	if err != nil {
 		// qemu-agent가 활성화되지 않았거나 명령어 실행에 실패한 경우
-		return ""
+		return nil
 	}
 
 	// JSON 응답에서 IP 주소 추출
-	ip := c.extractIP(string(output))
+	ips := c.extractIP(output)
 
-	return ip
+	return ips
 }
 
 // extractIP은 qemu-agent의 JSON 응답에서 IP 주소를 추출합니다.
-func (c *Command) extractIP(output string) string {
+func (c *Command) extractIP(output []byte) []netip.Addr {
 	// 간단한 문자열 파싱으로 IP 주소 추출
 	// JSON 파싱 라이브러리를 사용하지 않고 문자열 검색으로 처리
 
-	var foundIPs []string
-
-	// 전체 문자열에서 "ip-address" 패턴을 모두 찾기
-	searchStr := output
-	for {
-		// "ip-address" 필드 찾기
-		start := strings.Index(searchStr, `"ip-address"`)
-		if start == -1 {
-			break
-		}
-
-		// "ip-address" 다음의 콜론과 공백을 건너뛰고 IP 주소 찾기
-		substr := searchStr[start:]
-
-		// 콜론과 공백을 건너뛰고 IP 주소 찾기
-		colonIndex := strings.Index(substr, `:`)
-		if colonIndex != -1 {
-			substr = substr[colonIndex+1:]
-			// 공백 제거
-			substr = strings.TrimSpace(substr)
-
-			// 따옴표로 둘러싸인 IP 주소 찾기
-			if strings.HasPrefix(substr, `"`) {
-				substr = substr[1:] // 첫 번째 따옴표 제거
-				quoteEnd := strings.Index(substr, `"`)
-				if quoteEnd != -1 {
-					ip := substr[:quoteEnd]
-
-					// IPv4 주소인지 확인
-					if c.isValidIPv4(ip) {
-						foundIPs = append(foundIPs, ip)
-					}
-				}
-			}
-		}
-
-		// 다음 검색을 위해 현재 위치 이후부터 검색
-		searchStr = searchStr[start+len(`"ip-address"`):]
+	var response QemuAgentCommandResponse
+	err := json.Unmarshal(output, &response)
+	if err != nil {
+		return nil
 	}
 
-	// 찾은 IP 주소들 중에서 최적의 것을 선택
-	if len(foundIPs) > 0 {
-		// loopback 주소 제외하고 실제 네트워크 IP 우선 선택
-		for _, ip := range foundIPs {
-			if ip != "127.0.0.1" && ip != "::1" {
-				return ip
+	var foundIPs []netip.Addr
+
+	for _, returnValue := range response.Return {
+		for _, ipAddress := range returnValue.IPAddresses {
+			addr, err := netip.ParseAddr(ipAddress.IPAddress)
+			if err != nil {
+				continue
 			}
+			foundIPs = append(foundIPs, addr)
 		}
-		// 모든 IP가 loopback인 경우 첫 번째 것 반환
-		return foundIPs[0]
 	}
 
-	return ""
+	return foundIPs
+}
+
+type QemuAgentCommandResponse struct {
+	Return []struct {
+		Name        string `json:"name"`
+		IPAddresses []struct {
+			IPAddressType string `json:"ip-address-type"`
+			IPAddress     string `json:"ip-address"`
+			Prefix        int    `json:"prefix"`
+		} `json:"ip-addresses"`
+		Statistics struct {
+			TxPackets int `json:"tx-packets"`
+			TxErrs    int `json:"tx-errs"`
+			RxBytes   int `json:"rx-bytes"`
+			RxDropped int `json:"rx-dropped"`
+			RxPackets int `json:"rx-packets"`
+			RxErrs    int `json:"rx-errs"`
+			TxBytes   int `json:"tx-bytes"`
+			TxDropped int `json:"tx-dropped"`
+		} `json:"statistics"`
+		HardwareAddress string `json:"hardware-address"`
+	} `json:"return"`
 }

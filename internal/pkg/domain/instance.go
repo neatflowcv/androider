@@ -1,8 +1,10 @@
 package domain
 
+import "net/netip"
+
 type Instance struct {
 	Name   string
-	IP     string
+	IPs    []netip.Addr
 	Status InstanceStatus
 }
 

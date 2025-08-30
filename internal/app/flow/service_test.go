@@ -23,6 +23,6 @@ func TestList(t *testing.T) {
 		if instance.Status != domain.InstanceStatusRunning {
 			continue
 		}
-		require.NotEmpty(t, instance.IP)
+		require.NotEmpty(t, instance.IPs)
 	}
 }
