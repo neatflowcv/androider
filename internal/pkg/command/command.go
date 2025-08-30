@@ -47,24 +47,34 @@ func (c *Command) List(ctx context.Context) ([]*domain.Instance, error) {
 			astatus := fields[2]
 			status := parseStatus(astatus)
 
-			// Instance 생성 및 추가
-			instance := &domain.Instance{ //nolint:exhaustruct
-				Name:   name,
-				Status: status,
+			// android로 시작하는 인스턴스만 필터링
+			if strings.HasPrefix(name, "android") {
+				// android 문자열 제거
+				cleanName := strings.TrimPrefix(name, "android")
+				// Instance 생성 및 추가
+				instance := &domain.Instance{ //nolint:exhaustruct
+					Name:   cleanName,
+					Status: status,
+				}
+				instances = append(instances, instance)
 			}
-			instances = append(instances, instance)
 		} else if len(fields) >= 2 { //nolint:mnd
 			// ID가 없는 경우 (예: --all 옵션으로 인해)
 			name := fields[0]
 			astatus := fields[1]
 			status := parseStatus(astatus)
 
-			// Instance 생성 및 추가
-			instance := &domain.Instance{ //nolint:exhaustruct
-				Name:   name,
-				Status: status,
+			// android로 시작하는 인스턴스만 필터링
+			if strings.HasPrefix(name, "android") {
+				// android 문자열 제거
+				cleanName := strings.TrimPrefix(name, "android")
+				// Instance 생성 및 추가
+				instance := &domain.Instance{ //nolint:exhaustruct
+					Name:   cleanName,
+					Status: status,
+				}
+				instances = append(instances, instance)
 			}
-			instances = append(instances, instance)
 		}
 	}
 
