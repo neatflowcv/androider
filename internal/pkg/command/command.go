@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -87,6 +88,32 @@ func (c *Command) List(ctx context.Context) ([]*domain.Instance, error) {
 	}
 
 	return instances, nil
+}
+
+// Start implements virtualmachine.VirtualMachine.
+func (c *Command) Start(ctx context.Context, name string) error {
+	fullName := "android" + name
+	cmd := exec.CommandContext(ctx, "virsh", "start", fullName) //nolint:gosec
+
+	var outb, errb bytes.Buffer
+
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	err := cmd.Run()
+	if err != nil {
+		if strings.Contains(errb.String(), "error: failed to get domain") {
+			return virtualmachine.ErrInstanceNotFound
+		}
+
+		if strings.Contains(errb.String(), "error: Domain is already active") {
+			return virtualmachine.ErrInstanceAlreadyRunning
+		}
+
+		return fmt.Errorf("failed to execute virsh start: %w, %s,%s", err, outb.String(), errb.String())
+	}
+
+	return nil
 }
 
 func parseStatus(state string) domain.InstanceStatus {

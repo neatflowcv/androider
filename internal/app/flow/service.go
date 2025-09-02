@@ -19,7 +19,6 @@ func NewService(vm virtualmachine.VirtualMachine) *Service {
 }
 
 func (s *Service) Initialize() {
-
 }
 
 func (s *Service) Deinitialize() {
@@ -43,8 +42,13 @@ func (s *Service) List(ctx context.Context) ([]*domain.Instance, error) {
 	return instances, nil
 }
 
-func (s *Service) Start() {
+func (s *Service) Start(ctx context.Context, name string) error {
+	err := s.vm.Start(ctx, name)
+	if err != nil {
+		return fmt.Errorf("failed to start instance: %w", err)
+	}
 
+	return nil
 }
 
 func (s *Service) Stop() {

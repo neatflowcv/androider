@@ -8,4 +8,5 @@ import (
 
 type VirtualMachine interface {
 	List(ctx context.Context) ([]*domain.Instance, error)
+	Start(ctx context.Context, name string) error
 }
