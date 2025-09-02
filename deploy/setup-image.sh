@@ -30,20 +30,28 @@ mkfs.ext4 -L rootfs /dev/nbd0p2
 
 echo "mount partition"
 mount /dev/nbd0p2 /mnt
-mkdir -p /mnt/boot/efi
-mount /dev/nbd0p1 /mnt/boot/efi
+mkdir -p /mnt/efi
+mount /dev/nbd0p1 /mnt/efi
 
-pacstrap /mnt base sudo linux linux-firmware mkinitcpio networkmanager --needed
+pacstrap /mnt base sudo linux linux-firmware mkinitcpio networkmanager iptables-nft --needed
 
 genfstab -U /mnt > /mnt/etc/fstab
 
-arch-chroot /mnt /usr/bin/mkinitcpio -p linux
+tee /mnt/etc/mkinitcpio.d/linux.preset > /dev/null <<EOF
+ALL_kver="/efi/vmlinuz-linux"
+PRESETS=('default' 'fallback')
+default_uki="/efi/EFI/Linux/arch-linux.efi"
+fallback_uki="/efi/EFI/Linux/arch-linux-fallback.efi"
+fallback_options="-S autodetect"
+EOF
+arch-chroot /mnt bootctl install --esp-path=/efi
 
-arch-chroot /mnt /usr/bin/bootctl install
-tee /mnt/boot/efi/loader/entries/arch.conf > /dev/null <<EOF
+cp /mnt/boot/vmlinuz-linux /mnt/efi/vmlinuz-linux
+arch-chroot /mnt mkinitcpio -p linux
+
+tee /mnt/efi/loader/entries/arch.conf > /dev/null <<EOF
 title   Arch Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
+efi /EFI/Linux/arch-linux.efi
 options root=LABEL=rootfs rw console=ttyS0
 EOF
 
