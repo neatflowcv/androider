@@ -18,13 +18,6 @@ func NewService(vm virtualmachine.VirtualMachine) *Service {
 	}
 }
 
-func (s *Service) Initialize() {
-}
-
-func (s *Service) Deinitialize() {
-
-}
-
 func (s *Service) Create() {
 
 }
