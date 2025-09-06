@@ -15,7 +15,7 @@ if ! lsmod | grep -q '^nbd'; then
 fi
 
 echo "create qcow2 image"
-qemu-img create -f qcow2 archlinux.qcow2 10G
+qemu-img create -f qcow2 archlinux.qcow2 20G
 
 echo "bind qcow2 image"
 qemu-nbd -c /dev/nbd0 archlinux.qcow2
