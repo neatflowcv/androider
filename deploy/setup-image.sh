@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+# pacman -S --needed --noconfirm arch-install-scripts
+
 echo "root 권한 확인"
 if [ $(id -u) -ne 0 ]; then
     echo "root 권한이 없습니다. sudo 명령어를 사용해주세요."
